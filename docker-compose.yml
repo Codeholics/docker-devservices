@@ -1,0 +1,82 @@
+version: "3.5"
+services:
+  nginx:
+    image: codeholics/nginx:latest
+    build: ./nginx/
+    ports:
+      - "5150:5150"
+      - "5151:5151"
+      - "3000:3000"
+      - "8675:8675"
+    depends_on:
+      - gogs
+      - pypi
+      - registry
+      - jenkins
+    networks:
+      - front-tier
+    volumes:
+      - "nginx:/etc/nginx"
+      - "certs:/certs"
+  gogs:
+    image: gogs/gogs
+    ports:
+      - "10022:22"
+    volumes:
+      - "gogs:/data"
+    depends_on:
+      - "postgresdb"
+    external_links:
+      - "postgresdb:postgresdb"
+    networks:
+      - front-tier
+      - back-tier
+  postgresdb:
+    image: postgres 
+    volumes:
+      - "postgres:/var/lib/postgresql/data" 
+    environment:
+      - POSTGRES_USER=gogs
+      - POSTGRES_PASSWORD=gogs 
+    networks:
+      - back-tier
+  pypi:
+    image: codeholics/pypiservice:latest
+    build: ./pypi/
+    networks:
+      - front-tier
+    volumes:
+      - "pypi:/packages"
+  jenkins:
+    image: codeholics/jenkins:python
+    build: ./jenkins/
+    volumes:
+      - jenkins:/var/jenkins_home
+    networks:
+      front-tier:
+        aliases:
+          - jenkins
+  registry:
+    image: registry:2
+    volumes:
+      - registry:/var/lib/registry
+    networks:
+      - front-tier
+networks:
+  front-tier:
+    driver: overlay
+    driver_opts:
+        encrypted: "true"
+  back-tier:
+    driver: overlay
+    driver_opts:
+        encrypted: "true"
+volumes:
+    postgres:
+    gogs:
+    pypi:
+    registry:
+    docker:
+    jenkins:
+    nginx:
+    certs:
